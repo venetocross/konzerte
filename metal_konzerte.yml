@@ -1,0 +1,30 @@
+name: Metal Konzerte Berlin
+
+on:
+  schedule:
+    - cron: "0 8 * * 2"   # Dienstag 08:00 UTC (= 09:00/10:00 Berliner Zeit)
+    - cron: "0 8 * * 5"   # Freitag 08:00 UTC
+  workflow_dispatch:        # Manuell auslösbar zum Testen
+
+jobs:
+  konzerte-suchen:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Abhängigkeiten installieren
+        run: pip install anthropic
+
+      - name: Konzert-Agent ausführen
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ARCOR_EMAIL: ${{ secrets.ARCOR_EMAIL }}
+          ARCOR_PASSWORD: ${{ secrets.ARCOR_PASSWORD }}
+        run: python concert_agent.py
