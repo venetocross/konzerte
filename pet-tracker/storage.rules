@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Photos are stored under pet-photos/{uid}/... so ownership can be
+    // checked from the path alone without an extra Firestore lookup.
+    match /pet-photos/{uid}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
