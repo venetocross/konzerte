@@ -26,13 +26,18 @@ service cloud.firestore {
       }
     }
 
-    // Registration record per user. Anyone can create their own (always
-    // starting with no access) and read their own; only admins can grant
-    // access (update) or read everyone's record (for the admin console).
+    // Registration record per user, created once on first login with a
+    // one-time trial (capped here at 31 days as a safety margin against
+    // client clock skew - the app itself grants exactly 30). Since the
+    // document can never be deleted, the trial can't be re-granted to the
+    // same account later. Only admins can change access afterwards.
     match /accounts/{uid} {
       allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
       allow create: if request.auth != null && request.auth.uid == uid &&
-        request.resource.data.accessUntil == null;
+        request.resource.data.trialUsed == true &&
+        request.resource.data.accessUntil is int &&
+        request.resource.data.accessUntil > request.time.toMillis() &&
+        request.resource.data.accessUntil <= request.time.toMillis() + 2678400000;
       allow update: if isAdmin();
       allow delete: if false;
     }

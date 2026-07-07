@@ -53,7 +53,14 @@ function AccountRow({ account }: { account: Account }) {
             Registriert: {formatDateDe(new Date(account.createdAt).toISOString().slice(0, 10))} · UID: {account.uid}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-medium ${status.className}`}>{status.label}</span>
+        <div className="flex items-center gap-2">
+          {account.trialUsed && (
+            <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+              Testphase genutzt
+            </span>
+          )}
+          <span className={`rounded-full px-3 py-1 text-xs font-medium ${status.className}`}>{status.label}</span>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">

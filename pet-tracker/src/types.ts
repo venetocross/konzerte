@@ -51,6 +51,7 @@ export interface DailyLog {
 export interface Account {
   uid: string
   email: string
-  accessUntil: number | null // null = kein Zugang / noch nicht freigeschaltet
+  accessUntil: number | null // null = kein Zugang
+  trialUsed: boolean // true, sobald der einmalige automatische Testzeitraum vergeben wurde
   createdAt: number
 }

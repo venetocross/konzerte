@@ -92,9 +92,13 @@ Alternativ kann der Ordner `dist/` (nach `npm run build`) auch auf jedem anderen
 ## Zugangsverwaltung / Admin
 
 Jedes neue Konto legt beim ersten Login automatisch einen Eintrag in der Firestore-Collection
-`accounts` an (E-Mail, Registrierungsdatum, `accessUntil: null`). **Ohne gesetztes `accessUntil` in
-der Zukunft hat das Konto keinen Zugriff** – weder in der Oberfläche noch in den Sicherheitsregeln
-(die App ist also auch dann geschützt, wenn jemand versucht, die Oberfläche zu umgehen).
+`accounts` an und erhält dabei einmalig einen **30-tägigen Testzeitraum** (`accessUntil` = jetzt +
+30 Tage, `trialUsed: true`). Da dieser Eintrag danach nie wieder neu angelegt wird (Löschen ist in
+den Regeln gesperrt), kann ein und dasselbe Konto den Testzeitraum nicht erneut bekommen – in der
+Admin-Konsole ist außerdem sichtbar, welche Konten ihre Testphase bereits hatten (Badge "Testphase
+genutzt"). **Läuft `accessUntil` ab (oder ist `null`), hat das Konto keinen Zugriff mehr** – weder in
+der Oberfläche noch in den Sicherheitsregeln (die App ist also auch dann geschützt, wenn jemand
+versucht, die Oberfläche zu umgehen).
 
 Um Zugänge freizuschalten, brauchst du einmalig einen Admin-Account:
 
