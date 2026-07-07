@@ -7,7 +7,11 @@ import { formatDateDe, formatTimestampDe, todayKey } from '../lib/dateUtils'
 import { PhotoCapture } from '../components/PhotoCapture'
 import { MultiSelectDropdown } from '../components/MultiSelectDropdown'
 import { Button, Card, Input, PageTitle } from '../components/ui'
-import type { DailyLog } from '../types'
+import type { DailyLog, MealEntry } from '../types'
+
+function componentSum(meal: MealEntry): number {
+  return meal.components.reduce((sum, c) => sum + (c.amountG ?? 0), 0)
+}
 
 export function DailyLogPage() {
   const { selectedPet } = usePets()
@@ -54,6 +58,16 @@ export function DailyLogPage() {
     scheduleSave({ ...log, meals })
   }
 
+  function updateMealComponentNames(meal: MealEntry, names: string[]) {
+    const next = names.map((name) => meal.components.find((c) => c.name === name) ?? { name, amountG: null })
+    updateMeal(meal.index, { components: next })
+  }
+
+  function updateComponentAmount(meal: MealEntry, name: string, amountG: number | null) {
+    const next = meal.components.map((c) => (c.name === name ? { ...c, amountG } : c))
+    updateMeal(meal.index, { components: next })
+  }
+
   function addExcrementPhoto(photoUrl: string) {
     if (!log) return
     scheduleSave({ ...log, excrements: [...log.excrements, { photoUrl, takenAt: Date.now() }] })
@@ -83,12 +97,18 @@ export function DailyLogPage() {
           <Card key={meal.index} className="space-y-3">
             <h3 className="font-semibold text-brand-700">Mahlzeit {meal.index + 1}</h3>
             <label className="block text-sm font-medium text-neutral-700">
-              Gesamtfuttermenge
+              Gesamtfuttermenge (g)
               <Input
+                type="number"
+                min="0"
                 className="mt-1"
-                placeholder="z.B. 150 g"
-                value={meal.totalAmount}
-                onChange={(e) => updateMeal(meal.index, { totalAmount: e.target.value })}
+                placeholder="z.B. 150"
+                value={meal.totalAmountG ?? ''}
+                onChange={(e) =>
+                  updateMeal(meal.index, {
+                    totalAmountG: e.target.value === '' ? null : Number(e.target.value),
+                  })
+                }
               />
             </label>
             <label className="block text-sm font-medium text-neutral-700">
@@ -96,11 +116,35 @@ export function DailyLogPage() {
               <div className="mt-1">
                 <MultiSelectDropdown
                   options={selectedPet.enabledFoodComponents}
-                  selected={meal.components}
-                  onChange={(components) => updateMeal(meal.index, { components })}
+                  selected={meal.components.map((c) => c.name)}
+                  onChange={(names) => updateMealComponentNames(meal, names)}
                 />
               </div>
             </label>
+            {meal.components.length > 0 && (
+              <div className="space-y-1.5">
+                {meal.components.map((c) => (
+                  <div key={c.name} className="flex items-center justify-between gap-2 text-sm text-neutral-600">
+                    <span>{c.name}</span>
+                    <Input
+                      type="number"
+                      min="0"
+                      className="w-24"
+                      placeholder="g"
+                      value={c.amountG ?? ''}
+                      onChange={(e) =>
+                        updateComponentAmount(meal, c.name, e.target.value === '' ? null : Number(e.target.value))
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            {meal.totalAmountG != null && componentSum(meal) >= meal.totalAmountG && componentSum(meal) > 0 && (
+              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+                ⚠️ Komponenten ({componentSum(meal)} g) erreichen/überschreiten die Gesamtmenge ({meal.totalAmountG} g).
+              </p>
+            )}
             <div>
               <p className="mb-1 text-sm font-medium text-neutral-700">Foto vom Futter</p>
               <PhotoCapture

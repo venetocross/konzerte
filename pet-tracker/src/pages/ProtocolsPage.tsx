@@ -94,7 +94,7 @@ export function ProtocolsPage() {
               <div>
                 <p className="font-semibold text-neutral-900">{formatDateDe(log.date)}</p>
                 <p className="text-sm text-neutral-500">
-                  {log.meals.filter((m) => m.totalAmount || m.photoUrl).length}/{log.meals.length} Mahlzeiten erfasst ·{' '}
+                  {log.meals.filter((m) => m.totalAmountG != null || m.photoUrl).length}/{log.meals.length} Mahlzeiten erfasst ·{' '}
                   {log.excrements.length} Ausscheidungsfoto(s)
                 </p>
               </div>

@@ -71,9 +71,12 @@ async function addDaySection(doc: jsPDF, log: DailyLog, y: number): Promise<numb
     doc.setFont('helvetica', 'normal')
     y += 5
     doc.setFontSize(10)
-    doc.text(`Menge: ${meal.totalAmount || '–'}`, MARGIN, y)
+    doc.text(`Menge: ${meal.totalAmountG != null ? `${meal.totalAmountG} g` : '–'}`, MARGIN, y)
     y += 5
-    const components = meal.components.length > 0 ? meal.components.join(', ') : '–'
+    const components =
+      meal.components.length > 0
+        ? meal.components.map((c) => (c.amountG != null ? `${c.name} (${c.amountG} g)` : c.name)).join(', ')
+        : '–'
     const compLines = doc.splitTextToSize(`Komponenten: ${components}`, CONTENT_WIDTH - 30)
     doc.text(compLines, MARGIN, y)
     y += compLines.length * 5

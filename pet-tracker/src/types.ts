@@ -22,11 +22,16 @@ export interface Pet {
   createdAt: number
 }
 
+export interface MealComponentAmount {
+  name: string
+  amountG: number | null
+}
+
 export interface MealEntry {
   index: number
-  totalAmount: string // e.g. "150 g" - free text so it works for kg/g/Portionen
+  totalAmountG: number | null
   photoUrl: string | null
-  components: string[]
+  components: MealComponentAmount[]
 }
 
 export interface ExcrementEntry {
