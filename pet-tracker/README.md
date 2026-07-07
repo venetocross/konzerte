@@ -19,6 +19,9 @@ Web-App (PWA) zum Tracken von Futter und Ausscheidungen von Haustieren (Hund, Ka
 - **Verlauf** der Protokolle tage- oder wochenweise, exportierbar als PDF (inkl. Fotos) und direkt teilbar
   (Share-Sheet: Mail, WhatsApp, etc.) oder herunterladbar.
 - **Design**: Rot/Weiß, installierbar als PWA auf dem Homescreen.
+- **Zugangsverwaltung**: Neue Konten haben zunächst keinen Zugang; ein Admin schaltet sie über eine
+  eigene Admin-Konsole manuell frei (mit sichtbarem Ablaufdatum je Konto) – siehe Abschnitt
+  [Zugangsverwaltung / Admin](#zugangsverwaltung--admin).
 
 ## Tech-Stack
 
@@ -85,6 +88,27 @@ direkt am Handy im Browser geöffnet oder als PWA installiert werden.
 Alternativ kann der Ordner `dist/` (nach `npm run build`) auch auf jedem anderen statischen Hoster
 (Netlify, Vercel, …) bereitgestellt werden – dann ggf. eine SPA-Fallback-Regel ergänzen (alle Pfade
 → `index.html`), analog zu den `rewrites` in `firebase.json`.
+
+## Zugangsverwaltung / Admin
+
+Jedes neue Konto legt beim ersten Login automatisch einen Eintrag in der Firestore-Collection
+`accounts` an (E-Mail, Registrierungsdatum, `accessUntil: null`). **Ohne gesetztes `accessUntil` in
+der Zukunft hat das Konto keinen Zugriff** – weder in der Oberfläche noch in den Sicherheitsregeln
+(die App ist also auch dann geschützt, wenn jemand versucht, die Oberfläche zu umgehen).
+
+Um Zugänge freizuschalten, brauchst du einmalig einen Admin-Account:
+
+1. Firebase-Konsole → **Authentication** → Reiter **Users** → die UID des gewünschten Admin-Kontos
+   kopieren (lange Zeichenfolge in der Spalte "User UID").
+2. **Firestore Database** → Reiter **Daten** → Collection **`admins`** anlegen (falls noch nicht
+   vorhanden) → neues Dokument mit **Dokument-ID = genau diese UID** → ein beliebiges Feld eintragen,
+   z. B. `email: "deine@adresse.de"` → Speichern.
+3. Neu einloggen (oder Seite neu laden) – im Menü erscheint jetzt der Punkt **"Admin"**.
+
+In der Admin-Konsole (`/admin`) siehst du alle registrierten Konten mit Ablaufdatum/Status und kannst
+per Knopfdruck ein Datum setzen, um 30 Tage/1 Jahr verlängern oder sperren (`accessUntil` wird dann
+auf `null` gesetzt). Ein Bezahlvorgang ist bewusst nicht eingebaut – die Freischaltung erfolgt manuell,
+nachdem der Zahlungseingang außerhalb der App geprüft wurde.
 
 ## Hinweise
 

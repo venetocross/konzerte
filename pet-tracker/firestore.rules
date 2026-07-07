@@ -2,14 +2,46 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function hasAccess() {
+      return isAdmin() || (
+        request.auth != null &&
+        exists(/databases/$(database)/documents/accounts/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/accounts/$(request.auth.uid)).data.accessUntil != null &&
+        get(/databases/$(database)/documents/accounts/$(request.auth.uid)).data.accessUntil > request.time.toMillis()
+      );
+    }
+
     match /pets/{petId} {
-      allow read, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid && hasAccess();
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid && hasAccess();
 
       match /logs/{logId} {
-        allow read, write: if request.auth != null &&
+        allow read, write: if request.auth != null && hasAccess() &&
           get(/databases/$(database)/documents/pets/$(petId)).data.ownerId == request.auth.uid;
       }
+    }
+
+    // Registration record per user. Anyone can create their own (always
+    // starting with no access) and read their own; only admins can grant
+    // access (update) or read everyone's record (for the admin console).
+    match /accounts/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isAdmin());
+      allow create: if request.auth != null && request.auth.uid == uid &&
+        request.resource.data.accessUntil == null;
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // Admin membership is managed manually in the Firebase console, never
+    // through the app itself.
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
     }
   }
 }

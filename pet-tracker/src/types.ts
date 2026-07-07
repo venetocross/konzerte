@@ -47,3 +47,10 @@ export interface DailyLog {
   excrements: ExcrementEntry[]
   updatedAt: number
 }
+
+export interface Account {
+  uid: string
+  email: string
+  accessUntil: number | null // null = kein Zugang / noch nicht freigeschaltet
+  createdAt: number
+}

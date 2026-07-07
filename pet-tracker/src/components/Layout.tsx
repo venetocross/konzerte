@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useAccess } from '../contexts/AccessContext'
 import { usePets } from '../contexts/PetContext'
 import { SPECIES_LABELS } from '../lib/foodComponents'
 
@@ -10,6 +11,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
 
 export function Layout() {
   const { logout } = useAuth()
+  const { isAdmin } = useAccess()
   const { pets, selectedPetId, selectPet } = usePets()
   const navigate = useNavigate()
 
@@ -45,6 +47,11 @@ export function Layout() {
             <NavLink to="/pets" className={navLinkClass}>
               Haustiere
             </NavLink>
+            {isAdmin && (
+              <NavLink to="/admin" className={navLinkClass}>
+                Admin
+              </NavLink>
+            )}
             <button
               onClick={async () => {
                 await logout()
