@@ -11,7 +11,6 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
-  orderBy,
   query,
   setDoc,
   updateDoc,
@@ -53,16 +52,23 @@ export function PetProvider({ children }: { children: ReactNode }) {
       return
     }
     setLoading(true)
-    const q = query(
-      collection(db, PETS_COLLECTION),
-      where('ownerId', '==', user.uid),
-      orderBy('createdAt', 'asc')
+    // Sorted client-side (not via orderBy) so this doesn't need a composite
+    // Firestore index for ownerId + createdAt.
+    const q = query(collection(db, PETS_COLLECTION), where('ownerId', '==', user.uid))
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs
+          .map((d) => ({ id: d.id, ...d.data() }) as Pet)
+          .sort((a, b) => a.createdAt - b.createdAt)
+        setPets(list)
+        setLoading(false)
+      },
+      (error) => {
+        console.error('Fehler beim Laden der Haustiere:', error)
+        setLoading(false)
+      }
     )
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }) as Pet)
-      setPets(list)
-      setLoading(false)
-    })
     return unsubscribe
   }, [user])
 
