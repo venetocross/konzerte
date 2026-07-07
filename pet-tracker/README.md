@@ -69,12 +69,22 @@ npm run dev
 
 ### 5. Produktions-Build / Deployment
 
+Die Datei `firebase.json` (SPA-Rewrite, Hosting-Ordner `dist/`) und `.firebaserc` (Projekt-ID
+`pet-food-tracker-b7bac`) sind bereits vorbereitet. Deployment auf Firebase Hosting:
+
 ```bash
 npm run build
+npm install -g firebase-tools   # falls noch nicht installiert
+firebase login                  # öffnet den Google-Login im Browser
+firebase deploy                 # deployt Hosting + Firestore-/Storage-Regeln
 ```
 
-Der Ordner `dist/` kann auf jedem statischen Hoster (z. B. Firebase Hosting, Netlify, Vercel)
-bereitgestellt werden.
+Nach dem Deploy zeigt die CLI die fertige URL an (Format `https://<projekt-id>.web.app`) – die kann
+direkt am Handy im Browser geöffnet oder als PWA installiert werden.
+
+Alternativ kann der Ordner `dist/` (nach `npm run build`) auch auf jedem anderen statischen Hoster
+(Netlify, Vercel, …) bereitgestellt werden – dann ggf. eine SPA-Fallback-Regel ergänzen (alle Pfade
+→ `index.html`), analog zu den `rewrites` in `firebase.json`.
 
 ## Hinweise
 
