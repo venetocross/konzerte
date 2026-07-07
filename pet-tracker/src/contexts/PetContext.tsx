@@ -29,7 +29,7 @@ interface PetContextValue {
   selectPet: (id: string) => void
   reservePetId: () => string
   createPet: (id: string, pet: Omit<Pet, 'id' | 'ownerId' | 'createdAt'>) => Promise<void>
-  updatePet: (id: string, pet: Partial<Pet>) => Promise<void>
+  updatePet: (id: string, pet: Record<string, unknown>) => Promise<void>
   deletePet: (id: string) => Promise<void>
 }
 

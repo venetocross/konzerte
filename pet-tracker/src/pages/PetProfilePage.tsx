@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { deleteField } from 'firebase/firestore'
 import { usePets } from '../contexts/PetContext'
 import { useAuth } from '../contexts/AuthContext'
 import { PhotoCapture } from '../components/PhotoCapture'
 import { Button, Card, Checkbox, ErrorText, Field, Input, PageTitle, Select } from '../components/ui'
 import { DEFAULT_FOOD_COMPONENTS, SPECIES_LABELS } from '../lib/foodComponents'
-import type { Pet, PetGender, PetSpecies } from '../types'
+import type { PetGender, PetSpecies } from '../types'
 
 const SPECIES: PetSpecies[] = ['hund', 'katze', 'pferd']
 
@@ -91,7 +92,7 @@ export function PetProfilePage() {
     }
     setSaving(true)
     try {
-      const payload: Omit<Pet, 'id' | 'ownerId' | 'createdAt'> = {
+      const basePayload = {
         species,
         photoUrl,
         name: name.trim(),
@@ -99,17 +100,27 @@ export function PetProfilePage() {
         gender,
         breed: breed.trim(),
         neutered: neutered === 'ja',
-        chipNumber: chipNumber.trim() || undefined,
-        insuranceNumber: insuranceNumber.trim() || undefined,
-        insuranceName: insuranceName.trim() || undefined,
-        insuranceType: insuranceType.trim() || undefined,
         mealsPerDay,
         enabledFoodComponents: enabledComponents,
       }
+      // Firestore rejects `undefined` field values, so optional fields are
+      // either omitted entirely (create) or explicitly cleared (edit).
       if (isEdit && id) {
-        await updatePet(id, payload)
+        await updatePet(id, {
+          ...basePayload,
+          chipNumber: chipNumber.trim() || deleteField(),
+          insuranceNumber: insuranceNumber.trim() || deleteField(),
+          insuranceName: insuranceName.trim() || deleteField(),
+          insuranceType: insuranceType.trim() || deleteField(),
+        })
       } else {
-        await createPet(petId, payload)
+        await createPet(petId, {
+          ...basePayload,
+          ...(chipNumber.trim() ? { chipNumber: chipNumber.trim() } : {}),
+          ...(insuranceNumber.trim() ? { insuranceNumber: insuranceNumber.trim() } : {}),
+          ...(insuranceName.trim() ? { insuranceName: insuranceName.trim() } : {}),
+          ...(insuranceType.trim() ? { insuranceType: insuranceType.trim() } : {}),
+        })
       }
       navigate('/log')
     } catch {
