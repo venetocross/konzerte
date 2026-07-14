@@ -4,9 +4,12 @@ import { formatDateDe, formatTimestampDe } from './dateUtils'
 import { SPECIES_LABELS } from './foodComponents'
 import { dailyComponentTotals } from './logs'
 
-// Firebase Storage download URLs send Access-Control-Allow-Origin: *, which
-// lets us draw them onto a canvas and read pixel data back out as base64 -
-// required because jsPDF can only embed images as data URLs, not remote URLs.
+// Drawing a cross-origin image onto a canvas and reading it back out as a
+// data URL (required because jsPDF can only embed data URLs, not remote
+// URLs) needs the Storage bucket to send CORS headers for GET requests -
+// see the "CORS" section in the README for the one-time `gsutil cors set`
+// step. Without it every image silently fails to embed, so failures are
+// logged here to make that diagnosable instead of invisible.
 async function loadImageAsDataUrl(url: string): Promise<string | null> {
   try {
     const img = new Image()
@@ -24,7 +27,8 @@ async function loadImageAsDataUrl(url: string): Promise<string | null> {
     if (!ctx) return null
     ctx.drawImage(img, 0, 0)
     return canvas.toDataURL('image/jpeg', 0.85)
-  } catch {
+  } catch (err) {
+    console.warn('Foto konnte nicht ins PDF eingebettet werden (fehlt evtl. die CORS-Konfiguration des Storage-Buckets?):', url, err)
     return null
   }
 }
@@ -96,14 +100,20 @@ async function addDaySection(doc: jsPDF, log: DailyLog, y: number): Promise<numb
     y += compLines.length * 5
 
     if (meal.photoUrl) {
+      if (y > pageHeight - 35) {
+        doc.addPage()
+        y = 26
+      }
       const dataUrl = await loadImageAsDataUrl(meal.photoUrl)
       if (dataUrl) {
-        if (y > pageHeight - 35) {
-          doc.addPage()
-          y = 26
-        }
         doc.addImage(dataUrl, 'JPEG', MARGIN, y, 28, 28)
         y += 31
+      } else {
+        doc.setFontSize(8)
+        doc.setTextColor(180, 40, 40)
+        doc.text('(Foto konnte nicht geladen werden)', MARGIN, y)
+        doc.setTextColor(20, 20, 20)
+        y += 6
       }
     }
     y += 2

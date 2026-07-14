@@ -116,10 +116,18 @@ nachdem der Zahlungseingang außerhalb der App geprüft wurde.
 
 ## Hinweise
 
-- **PDF-Export**: Fotos werden clientseitig in das PDF eingebettet. Dazu müssen sie per Canvas aus
-  Firebase Storage geladen werden – das funktioniert mit den Standard-Download-URLs von Firebase Storage
-  ohne weitere Konfiguration. Sollte es zu CORS-Fehlern kommen, kann die Storage-CORS-Konfiguration mit
-  `gsutil cors set cors.json gs://<bucket>` gesetzt werden (`cors.json`: `[{"origin": ["*"], "method": ["GET"], "maxAgeSeconds": 3600}]`).
+- **PDF-Export / Fotos erscheinen nicht im PDF**: Fotos werden clientseitig per Canvas aus Firebase
+  Storage geladen und ins PDF eingebettet – das **braucht zwingend eine CORS-Konfiguration am
+  Storage-Bucket** (Firebase Storage sendet diese nicht automatisch mit). Einmalig einrichten:
+  1. [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) installieren, `gcloud init` und mit
+     dem Projekt `pet-food-tracker-b7bac` verbinden.
+  2. Im `pet-tracker`-Ordner (enthält bereits `cors.json`):
+     ```
+     gsutil cors set cors.json gs://pet-food-tracker-b7bac.firebasestorage.app
+     ```
+  Kein Redeploy nötig, wirkt sofort. Ohne diese Einrichtung werden Fotos in der App normal angezeigt,
+  fehlen aber im PDF (der Export selbst schlägt nicht fehl, die Bilder werden nur stillschweigend
+  übersprungen – seit dem letzten Update erscheint an der Stelle stattdessen ein Warnhinweis im PDF).
 - **Versand per PDF**: Es wird die native Web-Share-API genutzt (auf dem Smartphone öffnet sich das
   Teilen-Menü, z. B. direkt per Mail verschickbar). Auf Desktop-Browsern ohne Share-Support wird das PDF
   stattdessen heruntergeladen.
