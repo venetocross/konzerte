@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf'
 import type { DailyLog, Pet } from '../types'
 import { formatDateDe, formatTimestampDe } from './dateUtils'
 import { SPECIES_LABELS } from './foodComponents'
+import { dailyComponentTotals } from './logs'
 
 // Firebase Storage download URLs send Access-Control-Allow-Origin: *, which
 // lets us draw them onto a canvas and read pixel data back out as base64 -
@@ -60,6 +61,21 @@ async function addDaySection(doc: jsPDF, log: DailyLog, y: number): Promise<numb
   doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y)
   y += 6
 
+  const totals = dailyComponentTotals(log.meals)
+  const totalEntries = Object.entries(totals)
+  if (totalEntries.length > 0) {
+    const grandTotal = totalEntries.reduce((sum, [, amount]) => sum + amount, 0)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Tagesübersicht Futter', MARGIN, y)
+    doc.setFont('helvetica', 'normal')
+    y += 5
+    const summaryLine = totalEntries.map(([name, amount]) => `${name}: ${amount} g`).join(' · ')
+    const summaryLines = doc.splitTextToSize(`${summaryLine} · Gesamt: ${grandTotal} g`, CONTENT_WIDTH)
+    doc.text(summaryLines, MARGIN, y)
+    y += summaryLines.length * 5 + 3
+  }
+
   for (const meal of log.meals) {
     if (y > pageHeight - 35) {
       doc.addPage()
@@ -71,8 +87,6 @@ async function addDaySection(doc: jsPDF, log: DailyLog, y: number): Promise<numb
     doc.setFont('helvetica', 'normal')
     y += 5
     doc.setFontSize(10)
-    doc.text(`Menge: ${meal.totalAmountG != null ? `${meal.totalAmountG} g` : '–'}`, MARGIN, y)
-    y += 5
     const components =
       meal.components.length > 0
         ? meal.components.map((c) => (c.amountG != null ? `${c.name} (${c.amountG} g)` : c.name)).join(', ')

@@ -29,7 +29,6 @@ export interface MealComponentAmount {
 
 export interface MealEntry {
   index: number
-  totalAmountG: number | null
   photoUrl: string | null
   components: MealComponentAmount[]
 }

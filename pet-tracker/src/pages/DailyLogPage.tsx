@@ -2,16 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { usePets } from '../contexts/PetContext'
 import { useAuth } from '../contexts/AuthContext'
-import { emptyLog, saveLog, subscribeToLog } from '../lib/logs'
+import { dailyComponentTotals, emptyLog, saveLog, subscribeToLog } from '../lib/logs'
 import { formatDateDe, formatTimestampDe, todayKey } from '../lib/dateUtils'
 import { PhotoCapture } from '../components/PhotoCapture'
 import { MultiSelectDropdown } from '../components/MultiSelectDropdown'
+import { Lightbox } from '../components/Lightbox'
 import { Button, Card, Input, PageTitle } from '../components/ui'
 import type { DailyLog, MealEntry } from '../types'
-
-function componentSum(meal: MealEntry): number {
-  return meal.components.reduce((sum, c) => sum + (c.amountG ?? 0), 0)
-}
 
 export function DailyLogPage() {
   const { selectedPet } = usePets()
@@ -19,6 +16,7 @@ export function DailyLogPage() {
   const [dateKey, setDateKey] = useState(todayKey())
   const [log, setLog] = useState<DailyLog | null>(null)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const saveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -78,6 +76,9 @@ export function DailyLogPage() {
     scheduleSave({ ...log, excrements: log.excrements.filter((_, i) => i !== idx) })
   }
 
+  const totals = dailyComponentTotals(log.meals)
+  const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0)
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -92,25 +93,28 @@ export function DailyLogPage() {
       </div>
       <p className="mt-1 text-sm text-neutral-500">{formatDateDe(dateKey)}</p>
 
+      {Object.keys(totals).length > 0 && (
+        <Card className="mt-6">
+          <h3 className="font-semibold text-brand-700">Tagesübersicht Futter</h3>
+          <div className="mt-2 space-y-1 text-sm text-neutral-700">
+            {Object.entries(totals).map(([name, amount]) => (
+              <div key={name} className="flex justify-between">
+                <span>{name}</span>
+                <span>{amount} g</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 flex justify-between border-t border-neutral-200 pt-2 text-sm font-semibold text-neutral-900">
+            <span>Gesamt</span>
+            <span>{grandTotal} g</span>
+          </div>
+        </Card>
+      )}
+
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {log.meals.map((meal) => (
           <Card key={meal.index} className="space-y-3">
             <h3 className="font-semibold text-brand-700">Mahlzeit {meal.index + 1}</h3>
-            <label className="block text-sm font-medium text-neutral-700">
-              Gesamtfuttermenge (g)
-              <Input
-                type="number"
-                min="0"
-                className="mt-1"
-                placeholder="z.B. 150"
-                value={meal.totalAmountG ?? ''}
-                onChange={(e) =>
-                  updateMeal(meal.index, {
-                    totalAmountG: e.target.value === '' ? null : Number(e.target.value),
-                  })
-                }
-              />
-            </label>
             <label className="block text-sm font-medium text-neutral-700">
               Futterkomponenten
               <div className="mt-1">
@@ -140,11 +144,6 @@ export function DailyLogPage() {
                 ))}
               </div>
             )}
-            {meal.totalAmountG != null && componentSum(meal) >= meal.totalAmountG && componentSum(meal) > 0 && (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
-                ⚠️ Komponenten ({componentSum(meal)} g) erreichen/überschreiten die Gesamtmenge ({meal.totalAmountG} g).
-              </p>
-            )}
             <div>
               <p className="mb-1 text-sm font-medium text-neutral-700">Foto vom Futter</p>
               <PhotoCapture
@@ -153,6 +152,7 @@ export function DailyLogPage() {
                 storagePath={`pet-photos/${user!.uid}/${selectedPet.id}/logs/${dateKey}/meal-${meal.index}.jpg`}
                 onUploaded={(url) => updateMeal(meal.index, { photoUrl: url })}
                 onRemove={() => updateMeal(meal.index, { photoUrl: null })}
+                onView={setLightboxUrl}
               />
             </div>
           </Card>
@@ -163,7 +163,13 @@ export function DailyLogPage() {
           <div className="flex flex-wrap gap-3">
             {log.excrements.map((ex, i) => (
               <div key={i} className="flex flex-col items-center gap-1">
-                <img src={ex.photoUrl} alt="Ausscheidung" className="h-20 w-20 rounded-lg object-cover" />
+                <button type="button" onClick={() => setLightboxUrl(ex.photoUrl)}>
+                  <img
+                    src={ex.photoUrl}
+                    alt="Ausscheidung"
+                    className="h-20 w-20 cursor-pointer rounded-lg object-cover"
+                  />
+                </button>
                 <span className="text-[10px] text-neutral-400">{formatTimestampDe(ex.takenAt)}</span>
                 <button onClick={() => removeExcrementPhoto(i)} className="text-xs text-red-600 hover:underline">
                   Entfernen
@@ -179,6 +185,8 @@ export function DailyLogPage() {
           </div>
         </Card>
       </div>
+
+      <Lightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />
     </div>
   )
 }

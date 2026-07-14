@@ -19,23 +19,39 @@ function groupByWeek(logs: DailyLog[]): Map<string, DailyLog[]> {
   return map
 }
 
-async function exportAndDeliver(pet: Pet, logs: DailyLog[], label: string, setBusy: (b: boolean) => void) {
+async function generatePdfFile(pet: Pet, logs: DailyLog[], label: string): Promise<File> {
+  const blob = await exportLogsToPdf(pet, logs, label)
+  const filename = `pfotenprotokoll-${pet.name}-${label}.pdf`.replace(/\s+/g, '_')
+  return new File([blob], filename, { type: 'application/pdf' })
+}
+
+function downloadFile(file: File) {
+  const url = URL.createObjectURL(file)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = file.name
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function sharePdf(pet: Pet, logs: DailyLog[], label: string, setBusy: (b: boolean) => void) {
   setBusy(true)
   try {
-    const blob = await exportLogsToPdf(pet, logs, label)
-    const filename = `pfotenprotokoll-${pet.name}-${label}.pdf`.replace(/\s+/g, '_')
-    const file = new File([blob], filename, { type: 'application/pdf' })
-
+    const file = await generatePdfFile(pet, logs, label)
     if (navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: filename, text: `Pfotenprotokoll für ${pet.name}` })
+      await navigator.share({ files: [file], title: file.name, text: `Pfotenprotokoll für ${pet.name}` })
     } else {
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      URL.revokeObjectURL(url)
+      downloadFile(file)
     }
+  } finally {
+    setBusy(false)
+  }
+}
+
+async function downloadPdf(pet: Pet, logs: DailyLog[], label: string, setBusy: (b: boolean) => void) {
+  setBusy(true)
+  try {
+    downloadFile(await generatePdfFile(pet, logs, label))
   } finally {
     setBusy(false)
   }
@@ -94,17 +110,26 @@ export function ProtocolsPage() {
               <div>
                 <p className="font-semibold text-neutral-900">{formatDateDe(log.date)}</p>
                 <p className="text-sm text-neutral-500">
-                  {log.meals.filter((m) => m.totalAmountG != null || m.photoUrl).length}/{log.meals.length} Mahlzeiten erfasst ·{' '}
+                  {log.meals.filter((m) => m.components.length > 0 || m.photoUrl).length}/{log.meals.length} Mahlzeiten erfasst ·{' '}
                   {log.excrements.length} Ausscheidungsfoto(s)
                 </p>
               </div>
-              <Button
-                variant="secondary"
-                disabled={busyKey === log.id}
-                onClick={() => exportAndDeliver(selectedPet, [log], formatDateDe(log.date), (b) => setBusyKey(b ? log.id : null))}
-              >
-                {busyKey === log.id ? 'Erstellt PDF…' : 'Als PDF verschicken'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={busyKey === log.id}
+                  onClick={() => sharePdf(selectedPet, [log], formatDateDe(log.date), (b) => setBusyKey(b ? log.id : null))}
+                >
+                  {busyKey === log.id ? 'Erstellt PDF…' : 'Als PDF verschicken'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={busyKey === log.id}
+                  onClick={() => downloadPdf(selectedPet, [log], formatDateDe(log.date), (b) => setBusyKey(b ? log.id : null))}
+                >
+                  Herunterladen
+                </Button>
+              </div>
             </Card>
           ))}
         </div>
@@ -118,13 +143,22 @@ export function ProtocolsPage() {
                 <p className="font-semibold text-neutral-900">{week}</p>
                 <p className="text-sm text-neutral-500">{weekLogs.length} Tag(e) protokolliert</p>
               </div>
-              <Button
-                variant="secondary"
-                disabled={busyKey === week}
-                onClick={() => exportAndDeliver(selectedPet, weekLogs, week, (b) => setBusyKey(b ? week : null))}
-              >
-                {busyKey === week ? 'Erstellt PDF…' : 'Als PDF verschicken'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="secondary"
+                  disabled={busyKey === week}
+                  onClick={() => sharePdf(selectedPet, weekLogs, week, (b) => setBusyKey(b ? week : null))}
+                >
+                  {busyKey === week ? 'Erstellt PDF…' : 'Als PDF verschicken'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={busyKey === week}
+                  onClick={() => downloadPdf(selectedPet, weekLogs, week, (b) => setBusyKey(b ? week : null))}
+                >
+                  Herunterladen
+                </Button>
+              </div>
             </Card>
           ))}
         </div>

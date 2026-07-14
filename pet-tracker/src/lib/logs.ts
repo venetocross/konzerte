@@ -17,16 +17,16 @@ function logsCollection(petId: string) {
 export function emptyLog(petId: string, date: string, mealsPerDay: number): DailyLog {
   const meals: MealEntry[] = Array.from({ length: mealsPerDay }, (_, i) => ({
     index: i,
-    totalAmountG: null,
     photoUrl: null,
     components: [],
   }))
   return { id: date, petId, date, meals, excrements: [], updatedAt: Date.now() }
 }
 
-// Older logs stored totalAmount as free text (e.g. "150 g") and components as
-// plain strings. Normalizing on read keeps already-saved days working after
-// switching to per-component gram amounts.
+// Older logs stored components as plain strings (and some had a manual
+// totalAmount/totalAmountG field that no longer exists). Normalizing on read
+// keeps already-saved days working after switching to per-component gram
+// amounts and dropping the manual total.
 function normalizeMeal(raw: Record<string, unknown>): MealEntry {
   const rawComponents = raw.components
   const components: MealComponentAmount[] = Array.isArray(rawComponents)
@@ -35,17 +35,8 @@ function normalizeMeal(raw: Record<string, unknown>): MealEntry {
       )
     : []
 
-  let totalAmountG: number | null = null
-  if (typeof raw.totalAmountG === 'number') {
-    totalAmountG = raw.totalAmountG
-  } else if (typeof raw.totalAmount === 'string') {
-    const match = raw.totalAmount.match(/\d+([.,]\d+)?/)
-    totalAmountG = match ? Number(match[0].replace(',', '.')) : null
-  }
-
   return {
     index: raw.index as number,
-    totalAmountG,
     photoUrl: (raw.photoUrl as string | null) ?? null,
     components,
   }
@@ -87,4 +78,15 @@ export async function fetchAllLogsOnce(petId: string): Promise<DailyLog[]> {
   const q = query(logsCollection(petId), orderBy('date', 'desc'))
   const snap = await getDocs(q)
   return snap.docs.map((d) => normalizeLog({ id: d.id, ...d.data() }))
+}
+
+// Sums each component's amount across all meals of a day.
+export function dailyComponentTotals(meals: MealEntry[]): Record<string, number> {
+  const totals: Record<string, number> = {}
+  for (const meal of meals) {
+    for (const c of meal.components) {
+      if (c.amountG != null) totals[c.name] = (totals[c.name] ?? 0) + c.amountG
+    }
+  }
+  return totals
 }
